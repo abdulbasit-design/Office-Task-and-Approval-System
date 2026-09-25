@@ -10,6 +10,7 @@ from app.schemas.task import (
     TaskSubmit,
     TaskReject
 )
+from app.services.notification import create_notification
 
 
 def create_task(
@@ -43,6 +44,15 @@ def create_task(
     db.add(new_task)
     db.commit()
     db.refresh(new_task)
+
+    create_notification(
+        db,
+        user_id=new_task.assigned_to,
+        task_id=new_task.id,
+        notification_type="TASK_ASSIGNED",
+        title="New Task Assigned",
+        message=f"You have been assigned the task '{new_task.title}'."
+    )
 
     return new_task
 
@@ -133,6 +143,9 @@ def submit_task(
     if task.status not in ["PENDING", "REJECTED"]:
         return None
 
+    # Check whether this is a resubmission
+    was_rejected = task.status == "REJECTED"
+
     task.status = "SUBMITTED"
     task.submitted_at = datetime.now(timezone.utc)
     task.submission_note = task_data.submission_note
@@ -147,6 +160,28 @@ def submit_task(
 
     db.commit()
     db.refresh(task)
+
+    if was_rejected:
+        notification_type = "TASK_RESUBMITTED"
+        notification_title = "Task Resubmitted"
+        notification_message = (
+            f"The task '{task.title}' has been resubmitted."
+        )
+    else:
+        notification_type = "TASK_SUBMITTED"
+        notification_title = "Task Submitted"
+        notification_message = (
+            f"The task '{task.title}' has been submitted for review."
+        )
+
+    create_notification(
+        db,
+        user_id=task.created_by,
+        task_id=task.id,
+        notification_type=notification_type,
+        title=notification_title,
+        message=notification_message
+    )
 
     return task
 
@@ -174,6 +209,15 @@ def approve_task(
     db.commit()
     db.refresh(task)
 
+    create_notification(
+        db,
+        user_id=task.assigned_to,
+        task_id=task.id,
+        notification_type="TASK_APPROVED",
+        title="Task Approved",
+        message=f"Your task '{task.title}' has been approved."
+    )
+
     return task
 
 
@@ -200,5 +244,17 @@ def reject_task(
 
     db.commit()
     db.refresh(task)
+
+    create_notification(
+        db,
+        user_id=task.assigned_to,
+        task_id=task.id,
+        notification_type="TASK_REJECTED",
+        title="Task Rejected",
+        message=(
+            f"Your task '{task.title}' was rejected. "
+            f"Reason: {task.rejection_reason}"
+        )
+    )
 
     return task

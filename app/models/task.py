@@ -1,5 +1,6 @@
 from sqlalchemy import Column, BigInteger, String, Text, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -79,10 +80,10 @@ class Task(Base):
     )
 
     activity_log = Column(
-        JSONB,
-        nullable=False,
-        default=list
-    )
+    MutableList.as_mutable(JSONB),
+    nullable=False,
+    default=list
+)
 
     created_at = Column(
         DateTime(timezone=True),
