@@ -24,3 +24,12 @@ class UserResponse(BaseModel):
     joined_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserAdminUpdate(BaseModel):
+    full_name: str
+    email: EmailStr
+    role: str
+    department_id: int | None = None
+    manager_id: int | None = None
+    is_active: bool
